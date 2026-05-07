@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顧客資料卡</title>
+  <style>
+    :root {
+      --ink: #20242b;
+      --line: #3c424c;
+      --soft-line: #8b929d;
+      --paper: #ffffff;
+      --page: #eef1f5;
+      --accent: #2f5f75;
+      --accent-dark: #214555;
+      --field: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(238, 241, 245, 0.94);
+      border-bottom: 1px solid #d6dbe2;
+      backdrop-filter: blur(8px);
+    }
+
+    .topbar button {
+      min-height: 38px;
+      padding: 0 16px;
+      color: #fff;
+      background: var(--accent);
+      border: 1px solid var(--accent-dark);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .topbar button.secondary {
+      color: var(--accent-dark);
+      background: #fff;
+    }
+
+    .sheet {
+      width: min(1120px, calc(100vw - 28px));
+      margin: 22px auto 40px;
+      padding: 30px 34px 36px;
+      background: var(--paper);
+      border: 2px solid var(--line);
+      box-shadow: 0 18px 45px rgba(25, 36, 50, 0.14);
+    }
+
+    .title {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .title h1 {
+      grid-column: 2;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", "Noto Serif TC", serif;
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 700;
+      letter-spacing: 0;
+      text-align: center;
+    }
+
+    .title .no {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 180px;
+    }
+
+    .visit-row {
+      display: grid;
+      grid-template-columns: auto 100px auto 80px auto 80px 1fr;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+
+    .line-input {
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      padding: 4px 8px;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+    }
+
+    .form-table,
+    .mini-table,
+    .record-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 2px solid var(--line);
+    }
+
+    .form-table th,
+    .form-table td,
+    .mini-table th,
+    .mini-table td,
+    .record-table th,
+    .record-table td {
+      border: 1px solid var(--soft-line);
+      vertical-align: middle;
+    }
+
+    .form-table th {
+      width: 78px;
+      padding: 9px 8px;
+      font-size: 19px;
+      font-weight: 600;
+      text-align: center;
+      background: #f4f6f8;
+    }
+
+    .form-table td {
+      min-height: 46px;
+      padding: 7px 10px;
+    }
+
+    .wide {
+      width: 38%;
+    }
+
+    .input,
+    textarea,
+    select {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 8px;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid #c9d0d8;
+      border-radius: 4px;
+    }
+
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .inline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 16px;
+    }
+
+    .inline.compact {
+      gap: 8px 12px;
+    }
+
+    label.choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .section-title {
+      margin: 0;
+      padding: 8px 11px;
+      font-size: 20px;
+      font-weight: 700;
+      border-right: 2px solid var(--line);
+      border-left: 2px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .mini-table th {
+      width: 86px;
+      padding: 8px;
+      font-size: 19px;
+      font-weight: 600;
+      text-align: center;
+      background: #f4f6f8;
+    }
+
+    .mini-table td {
+      padding: 7px 10px;
+    }
+
+    .brand-line {
+      padding: 8px 11px;
+      border-right: 2px solid var(--line);
+      border-left: 2px solid var(--line);
+      border-bottom: 1px solid var(--soft-line);
+    }
+
+    .product-table-wrapper,
+    .record-wrapper {
+      overflow-x: auto;
+      border-right: 2px solid var(--line);
+      border-left: 2px solid var(--line);
+    }
+
+    .record-wrapper {
+      border-bottom: 2px solid var(--line);
+    }
+
+    .product-table,
+    .purchase-table {
+      min-width: 1030px;
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .product-table th,
+    .product-table td,
+    .purchase-table th,
+    .purchase-table td {
+      border: 1px solid var(--soft-line);
+      padding: 5px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .product-table th,
+    .purchase-table th {
+      background: #f4f6f8;
+      font-weight: 600;
+    }
+
+    .product-table input,
+    .purchase-table input,
+    .purchase-table select {
+      width: 100%;
+      min-height: 34px;
+      padding: 5px 6px;
+      border: 1px solid transparent;
+      background: #fff;
+      text-align: center;
+    }
+
+    .product-table input:focus,
+    .purchase-table input:focus {
+      border-color: var(--accent);
+      outline: 0;
+    }
+
+    .purchase-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 11px;
+      border-right: 2px solid var(--line);
+      border-left: 2px solid var(--line);
+      border-bottom: 1px solid var(--soft-line);
+      background: #fbfcfd;
+    }
+
+    .purchase-title h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .small-button {
+      min-height: 32px;
+      padding: 0 12px;
+      color: var(--accent-dark);
+      background: #fff;
+      border: 1px solid #9fb1bc;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .remove-row {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      color: #8d2734;
+      background: #fff;
+      border: 1px solid #d6a3aa;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .notes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-right: 2px solid var(--line);
+      border-bottom: 2px solid var(--line);
+      border-left: 2px solid var(--line);
+    }
+
+    .notes label {
+      display: block;
+      padding: 8px 10px;
+      border-right: 1px solid var(--soft-line);
+      border-bottom: 1px solid var(--soft-line);
+      font-weight: 600;
+      background: #f4f6f8;
+    }
+
+    .notes textarea {
+      min-height: 92px;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .note-box {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 136px;
+    }
+
+    .footer-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #5d6672;
+      text-align: right;
+    }
+
+    @media (max-width: 760px) {
+      .sheet {
+        width: min(100vw - 16px, 1120px);
+        padding: 18px 12px 24px;
+      }
+
+      .title {
+        grid-template-columns: 1fr;
+      }
+
+      .title h1,
+      .title .no {
+        grid-column: auto;
+        justify-self: stretch;
+      }
+
+      .visit-row {
+        grid-template-columns: auto 1fr auto 1fr auto 1fr;
+        font-size: 16px;
+      }
+
+      .form-table,
+      .form-table tbody,
+      .form-table tr,
+      .form-table th,
+      .form-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .form-table tr {
+        border-bottom: 1px solid var(--soft-line);
+      }
+
+      .form-table th {
+        border-right: 0;
+        border-left: 0;
+      }
+
+      .notes {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .topbar,
+      .small-button,
+      .remove-row {
+        display: none !important;
+      }
+
+      .sheet {
+        width: 100%;
+        margin: 0;
+        padding: 12mm;
+        border: 2px solid #000;
+        box-shadow: none;
+      }
+
+      .input,
+      textarea,
+      select,
+      .product-table input,
+      .purchase-table input,
+      .purchase-table select {
+        background: transparent;
+        border-color: transparent;
+      }
+
+      .product-table-wrapper,
+      .record-wrapper {
+        overflow: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <button type="button" onclick="window.print()">列印</button>
+    <button type="button" class="secondary" id="saveForm">儲存到此瀏覽器</button>
+    <button type="button" class="secondary" id="clearForm">清空表單</button>
+  </div>
+
+  <main class="sheet">
+    <div class="title">
+      <h1>顧客資料卡</h1>
+      <label class="no">NO.<input class="line-input" name="cardNo" autocomplete="off"></label>
+    </div>
+
+    <section class="visit-row" aria-label="初次來店日期">
+      <span>初次來店：</span>
+      <input class="line-input" name="firstYear" inputmode="numeric">
+      <span>年</span>
+      <input class="line-input" name="firstMonth" inputmode="numeric">
+      <span>月</span>
+      <input class="line-input" name="firstDay" inputmode="numeric">
+      <span>日</span>
+    </section>
+
+    <form id="customerForm" autocomplete="on">
+      <table class="form-table" aria-label="顧客基本資料">
+        <tbody>
+          <tr>
+            <th>姓名</th>
+            <td class="wide"><input class="input" name="name"></td>
+            <th>地址</th>
+            <td colspan="3">
+              <div class="inline compact">
+                <label class="choice"><input type="radio" name="addressType" value="住宅">住宅</label>
+                <label class="choice"><input type="radio" name="addressType" value="公司">公司</label>
+                <input class="input" name="address" aria-label="地址">
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>生日</th>
+            <td>
+              <div class="inline compact">
+                <input class="line-input" name="birthYear" inputmode="numeric" aria-label="出生年">
+                <span>年</span>
+                <input class="line-input" name="birthMonth" inputmode="numeric" aria-label="出生月">
+                <span>月</span>
+                <input class="line-input" name="birthDay" inputmode="numeric" aria-label="出生日">
+                <span>日</span>
+              </div>
+            </td>
+            <th>TEL</th>
+            <td colspan="3"><input class="input" name="tel" inputmode="tel"></td>
+          </tr>
+          <tr>
+            <th>職業</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="radio" name="job" value="學生">學生</label>
+                <label class="choice"><input type="radio" name="job" value="主婦">主婦</label>
+                <label class="choice"><input type="radio" name="job" value="OL">OL</label>
+                <label class="choice"><input type="radio" name="job" value="自營業">自營業</label>
+                <input class="input" name="jobOther" placeholder="其他">
+              </div>
+            </td>
+            <th>行動</th>
+            <td colspan="3">
+              <div class="inline compact">
+                <input class="input" name="mobile" inputmode="tel" aria-label="行動電話">
+                <span>方便連絡時間：</span>
+                <input class="line-input" name="contactStart" aria-label="方便連絡起始時間">
+                <span>點 ~</span>
+                <input class="line-input" name="contactEnd" aria-label="方便連絡結束時間">
+                <span>點</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>性別</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="radio" name="gender" value="男">男</label>
+                <label class="choice"><input type="radio" name="gender" value="女">女</label>
+                <label class="choice"><input type="radio" name="gender" value="其他">其他</label>
+              </div>
+            </td>
+            <th>e-mail</th>
+            <td colspan="3"><input class="input" name="email" type="email"></td>
+          </tr>
+          <tr>
+            <td colspan="6">
+              <div class="inline">
+                <span>是否願意收到企業活動相關訊息：</span>
+                <label class="choice"><input type="radio" name="marketing" value="是">是</label>
+                <label class="choice"><input type="checkbox" name="marketingWay" value="電話">電話</label>
+                <label class="choice"><input type="checkbox" name="marketingWay" value="印刷郵件">印刷郵件</label>
+                <label class="choice"><input type="checkbox" name="marketingWay" value="電子郵件">電子郵件</label>
+                <label class="choice"><input type="checkbox" name="marketingWay" value="簡訊">簡訊</label>
+                <label class="choice"><input type="radio" name="marketing" value="否">否</label>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 class="section-title">＊個人小檔案（可複選）</h2>
+      <table class="mini-table" aria-label="個人小檔案">
+        <tbody>
+          <tr>
+            <th>在意</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="checkbox" name="concern" value="鬆弛">鬆弛</label>
+                <label class="choice"><input type="checkbox" name="concern" value="細紋">細紋</label>
+                <label class="choice"><input type="checkbox" name="concern" value="乾燥">乾燥</label>
+                <label class="choice"><input type="checkbox" name="concern" value="暗沉">暗沉</label>
+                <label class="choice"><input type="checkbox" name="concern" value="色斑">色斑</label>
+                <label class="choice"><input type="checkbox" name="concern" value="角質">角質</label>
+                <label class="choice"><input type="checkbox" name="concern" value="疲勞">疲勞</label>
+                <label class="choice"><input type="checkbox" name="concern" value="敏感">敏感</label>
+                <label class="choice"><input type="checkbox" name="concern" value="痘痘">痘痘</label>
+                <label class="choice"><input type="checkbox" name="concern" value="出油">出油</label>
+                <label class="choice"><input type="checkbox" name="concern" value="黑眼圈">黑眼圈</label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>生活</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="checkbox" name="life" value="日晒">日晒</label>
+                <label class="choice"><input type="checkbox" name="life" value="冷氣">冷氣</label>
+                <label class="choice"><input type="checkbox" name="life" value="偏食">偏食</label>
+                <label class="choice"><input type="checkbox" name="life" value="抽煙">抽煙</label>
+                <label class="choice"><input type="checkbox" name="life" value="嗜咖啡紅茶">嗜咖啡紅茶</label>
+                <label class="choice"><input type="checkbox" name="life" value="睡眠不足">睡眠不足</label>
+                <label class="choice"><input type="checkbox" name="life" value="易感壓力">易感壓力</label>
+                <label class="choice"><input type="checkbox" name="life" value="常使用電腦或上網">常使用電腦或上網</label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>體況</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="checkbox" name="condition" value="胃腸不適">胃腸不適</label>
+                <label class="choice"><input type="checkbox" name="condition" value="生理不順">生理不順</label>
+                <label class="choice"><input type="checkbox" name="condition" value="長期服藥">長期服藥</label>
+                <label class="choice"><input type="checkbox" name="condition" value="容易感冒">容易感冒</label>
+                <label class="choice"><input type="checkbox" name="condition" value="手腳寒冷症">手腳寒冷症</label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>彩妝</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="radio" name="makeup" value="每天">每天</label>
+                <label class="choice"><input type="radio" name="makeup" value="偶而">偶而</label>
+                <label class="choice"><input type="radio" name="makeup" value="沒有">沒有</label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>興趣</th>
+            <td>
+              <div class="inline compact">
+                <label class="choice"><input type="checkbox" name="interest" value="流行">流行</label>
+                <label class="choice"><input type="checkbox" name="interest" value="上網">上網</label>
+                <label class="choice"><input type="checkbox" name="interest" value="旅行">旅行</label>
+                <label class="choice"><input type="checkbox" name="interest" value="運動">運動</label>
+                <label class="choice"><input type="checkbox" name="interest" value="閱讀">閱讀</label>
+                <label class="choice"><input type="checkbox" name="interest" value="音樂">音樂</label>
+                <label class="choice"><input type="checkbox" name="interest" value="跳舞">跳舞</label>
+                <label class="choice"><input type="checkbox" name="interest" value="電影">電影</label>
+                <label class="choice"><input type="checkbox" name="interest" value="逛街">逛街</label>
+                <label class="choice">其他<input class="input" name="interestOther" aria-label="其他興趣"></label>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="brand-line">
+        <div class="inline">
+          <span>＊目前使用的品牌・系列：</span>
+          <label class="choice"><input type="checkbox" name="brandType" value="日系">日系</label>
+          <label class="choice"><input type="checkbox" name="brandType" value="歐美系">歐美系</label>
+          <label class="choice"><input type="checkbox" name="brandType" value="開架系">開架系</label>
+          <label class="choice"><input type="checkbox" name="brandType" value="醫美系">醫美系</label>
+          <input class="input" name="brandName" placeholder="品牌 / 系列名稱">
+        </div>
+      </div>
+
+      <div class="product-table-wrapper">
+        <table class="product-table" aria-label="目前使用品目">
+          <thead>
+            <tr>
+              <th>使用品目</th>
+              <th>潔膚</th>
+              <th>皂霜</th>
+              <th>化妝水</th>
+              <th>乳液</th>
+              <th>美容液</th>
+              <th>營養霜</th>
+              <th>角質液</th>
+              <th>日霜</th>
+              <th>粉底</th>
+              <th>口紅</th>
+              <th>眼影</th>
+              <th>眉</th>
+              <th>防曬</th>
+              <th>MEMO</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>品牌</td>
+              <td><input name="useCleanser"></td>
+              <td><input name="useSoapCream"></td>
+              <td><input name="useToner"></td>
+              <td><input name="useLotion"></td>
+              <td><input name="useSerum"></td>
+              <td><input name="useCream"></td>
+              <td><input name="useExfoliant"></td>
+              <td><input name="useDayCream"></td>
+              <td><input name="useFoundation"></td>
+              <td><input name="useLipstick"></td>
+              <td><input name="useEyeshadow"></td>
+              <td><input name="useBrow"></td>
+              <td><input name="useSunscreen"></td>
+              <td><input name="useMemo"></td>
+            </tr>
+            <tr>
+              <td>備註</td>
+              <td><input name="useCleanserNote"></td>
+              <td><input name="useSoapCreamNote"></td>
+              <td><input name="useTonerNote"></td>
+              <td><input name="useLotionNote"></td>
+              <td><input name="useSerumNote"></td>
+              <td><input name="useCreamNote"></td>
+              <td><input name="useExfoliantNote"></td>
+              <td><input name="useDayCreamNote"></td>
+              <td><input name="useFoundationNote"></td>
+              <td><input name="useLipstickNote"></td>
+              <td><input name="useEyeshadowNote"></td>
+              <td><input name="useBrowNote"></td>
+              <td><input name="useSunscreenNote"></td>
+              <td><input name="useMemoNote"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="purchase-title">
+        <h2>購買紀錄</h2>
+        <button type="button" class="small-button" id="addPurchase">新增一筆</button>
+      </div>
+      <div class="record-wrapper">
+        <table class="purchase-table" id="purchaseTable" aria-label="購買紀錄">
+          <thead>
+            <tr>
+              <th style="width: 110px;">日期</th>
+              <th style="width: 150px;">品項</th>
+              <th style="width: 150px;">品牌 / 系列</th>
+              <th style="width: 90px;">數量</th>
+              <th style="width: 110px;">金額</th>
+              <th style="width: 130px;">付款方式</th>
+              <th>備註</th>
+              <th style="width: 44px;"> </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="purchase-title">
+        <h2>以下由美容顧問填寫</h2>
+      </div>
+      <div class="notes">
+        <div class="note-box">
+          <label for="serviceRecord">服務紀錄</label>
+          <textarea id="serviceRecord" name="serviceRecord"></textarea>
+        </div>
+        <div class="note-box">
+          <label for="contactRecord">聯絡紀錄</label>
+          <textarea id="contactRecord" name="contactRecord"></textarea>
+        </div>
+        <div class="note-box">
+          <label for="skinAdvice">膚況觀察 / 建議</label>
+          <textarea id="skinAdvice" name="skinAdvice"></textarea>
+        </div>
+        <div class="note-box">
+          <label for="nextAction">下次追蹤 / 預約</label>
+          <textarea id="nextAction" name="nextAction"></textarea>
+        </div>
+      </div>
+    </form>
+
+    <p class="footer-note">此頁資料可列印；按「儲存到此瀏覽器」會保存在目前電腦的瀏覽器中。</p>
+  </main>
+
+  <template id="purchaseRowTemplate">
+    <tr>
+      <td><input name="purchaseDate[]" type="date"></td>
+      <td><input name="purchaseItem[]"></td>
+      <td><input name="purchaseBrand[]"></td>
+      <td><input name="purchaseQty[]" inputmode="numeric"></td>
+      <td><input name="purchaseAmount[]" inputmode="decimal"></td>
+      <td>
+        <select name="purchasePayment[]">
+          <option value=""></option>
+          <option>現金</option>
+          <option>信用卡</option>
+          <option>轉帳</option>
+          <option>行動支付</option>
+          <option>其他</option>
+        </select>
+      </td>
+      <td><input name="purchaseNote[]"></td>
+      <td><button type="button" class="remove-row" aria-label="刪除此購買紀錄">×</button></td>
+    </tr>
+  </template>
+
+  <script>
+    const STORAGE_KEY = "customer-card-form-v1";
+    const form = document.querySelector("#customerForm");
+    const purchaseTableBody = document.querySelector("#purchaseTable tbody");
+    const purchaseTemplate = document.querySelector("#purchaseRowTemplate");
+
+    function addPurchaseRow(values = {}) {
+      const row = purchaseTemplate.content.firstElementChild.cloneNode(true);
+      row.querySelector(".remove-row").addEventListener("click", () => row.remove());
+      Object.entries(values).forEach(([name, value]) => {
+        const field = row.querySelector(`[name="${name}[]"]`);
+        if (field) field.value = value;
+      });
+      purchaseTableBody.appendChild(row);
+    }
+
+    function serializeForm() {
+      const data = { fields: {}, checks: {}, purchases: [] };
+      const fields = document.querySelectorAll("input, textarea, select");
+
+      fields.forEach((field) => {
+        if (field.name.endsWith("[]")) return;
+        if (field.type === "checkbox") {
+          if (!data.checks[field.name]) data.checks[field.name] = [];
+          if (field.checked) data.checks[field.name].push(field.value);
+          return;
+        }
+        if (field.type === "radio") {
+          if (field.checked) data.fields[field.name] = field.value;
+          return;
+        }
+        data.fields[field.name] = field.value;
+      });
+
+      purchaseTableBody.querySelectorAll("tr").forEach((row) => {
+        const item = {};
+        row.querySelectorAll("input, select").forEach((field) => {
+          item[field.name.replace("[]", "")] = field.value;
+        });
+        data.purchases.push(item);
+      });
+
+      return data;
+    }
+
+    function restoreForm(data) {
+      if (!data) return;
+
+      Object.entries(data.fields || {}).forEach(([name, value]) => {
+        const fields = document.querySelectorAll(`[name="${CSS.escape(name)}"]`);
+        fields.forEach((field) => {
+          if (field.type === "radio") {
+            field.checked = field.value === value;
+          } else {
+            field.value = value;
+          }
+        });
+      });
+
+      Object.entries(data.checks || {}).forEach(([name, values]) => {
+        document.querySelectorAll(`[name="${CSS.escape(name)}"]`).forEach((field) => {
+          field.checked = values.includes(field.value);
+        });
+      });
+
+      purchaseTableBody.innerHTML = "";
+      (data.purchases || []).forEach(addPurchaseRow);
+      if (!purchaseTableBody.children.length) addPurchaseRow();
+    }
+
+    document.querySelector("#addPurchase").addEventListener("click", () => addPurchaseRow());
+
+    document.querySelector("#saveForm").addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeForm()));
+      alert("已儲存到此瀏覽器。");
+    });
+
+    document.querySelector("#clearForm").addEventListener("click", () => {
+      if (!confirm("確定要清空目前表單嗎？")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      form.reset();
+      document.querySelectorAll(".title input, .visit-row input").forEach((field) => {
+        field.value = "";
+      });
+      purchaseTableBody.innerHTML = "";
+      addPurchaseRow();
+    });
+
+    try {
+      restoreForm(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+    } catch (error) {
+      addPurchaseRow();
+    }
+
+    if (!purchaseTableBody.children.length) addPurchaseRow();
+  </script>
+</body>
+</html>
