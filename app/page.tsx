@@ -1,37 +1,21 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-
-const STORAGE_KEY = "customer-card-form-v1";
-
-type Fields = Record<string, string>;
-type Checks = Record<string, string[]>;
-
-type Purchase = {
-  purchaseDate: string;
-  purchaseItem: string;
-  purchaseBrand: string;
-  purchaseQty: string;
-  purchaseAmount: string;
-  purchasePayment: string;
-  purchaseNote: string;
-};
-
-type StoredData = {
-  fields?: Fields;
-  checks?: Checks;
-  purchases?: Partial<Purchase>[];
-};
-
-const emptyPurchase = (): Purchase => ({
-  purchaseDate: "",
-  purchaseItem: "",
-  purchaseBrand: "",
-  purchaseQty: "",
-  purchaseAmount: "",
-  purchasePayment: "",
-  purchaseNote: ""
-});
+import {
+  Checks,
+  Fields,
+  LEGACY_STORAGE_KEY,
+  Purchase,
+  SELECTED_CUSTOMER_KEY,
+  StoredData,
+  customerIdentity,
+  emptyPurchase,
+  findCustomerById,
+  loadCustomers,
+  normalizePurchase,
+  saveCustomers,
+  upsertCustomer
+} from "./customerStore";
 
 const initialFields: Fields = {
   cardNo: "",
@@ -107,7 +91,7 @@ const choiceGroups = {
   marketingWay: ["電話", "印刷郵件", "電子郵件", "簡訊"],
   concern: ["鬆弛", "細紋", "乾燥", "暗沉", "色斑", "角質", "疲倦", "敏感", "痘痘", "出油", "黑眼圈"],
   life: ["日曬", "冷氣", "偏食", "抽煙", "嗜咖啡紅茶", "睡眠不足", "易感壓力", "常使用電腦或上網"],
-  condition: ["胃腸不適", "生理不順", "長期服藥", "容易感冒", "手腳寒冷症"],
+  condition: ["胃腸不適", "生理不順", "長期服藥", "容易感冒", "手腳寒冷症", "無"],
   makeup: ["每天", "偶爾", "沒有"],
   interest: ["流行", "上網", "旅行", "運動", "閱讀", "音樂", "跳舞", "電影", "逛街"],
   brandType: ["日系", "歐美系", "開架系", "醫美系"]
@@ -132,31 +116,39 @@ const productColumns = [
 
 const paymentOptions = ["", "現金", "信用卡", "轉帳", "行動支付", "其他"];
 
-function normalizePurchase(purchase: Partial<Purchase>): Purchase {
-  return {
-    ...emptyPurchase(),
-    ...purchase
-  };
-}
-
 export default function CustomerCardPage() {
   const [fields, setFields] = useState<Fields>(initialFields);
   const [checks, setChecks] = useState<Checks>(initialChecks);
   const [purchases, setPurchases] = useState<Purchase[]>([emptyPurchase()]);
+  const [currentCustomerId, setCurrentCustomerId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
+      const hadLegacyData = Boolean(window.localStorage.getItem(LEGACY_STORAGE_KEY));
+      const customers = loadCustomers();
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "1") {
+        window.localStorage.removeItem(SELECTED_CUSTOMER_KEY);
         setIsReady(true);
         return;
       }
 
-      const data = JSON.parse(raw) as StoredData;
-      setFields({ ...initialFields, ...(data.fields ?? {}) });
-      setChecks({ ...initialChecks, ...(data.checks ?? {}) });
-      const restoredPurchases = (data.purchases ?? []).map(normalizePurchase);
+      const requestedCustomerId = params.get("customerId") ?? window.localStorage.getItem(SELECTED_CUSTOMER_KEY);
+      const selectedCustomer =
+        (requestedCustomerId ? findCustomerById(requestedCustomerId) : undefined) ??
+        (hadLegacyData && customers.length ? customers[0] : undefined);
+
+      if (!selectedCustomer) {
+        setIsReady(true);
+        return;
+      }
+
+      setCurrentCustomerId(selectedCustomer.id);
+      window.localStorage.setItem(SELECTED_CUSTOMER_KEY, selectedCustomer.id);
+      setFields({ ...initialFields, ...selectedCustomer.fields });
+      setChecks({ ...initialChecks, ...selectedCustomer.checks });
+      const restoredPurchases = selectedCustomer.purchases.map(normalizePurchase);
       setPurchases(restoredPurchases.length ? restoredPurchases : [emptyPurchase()]);
     } catch {
       setPurchases([emptyPurchase()]);
@@ -207,16 +199,27 @@ export default function CustomerCardPage() {
   }
 
   function saveForm() {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData));
-    window.alert("已儲存到此瀏覽器。");
+    const identity = customerIdentity(fields);
+    if (!identity.name || !identity.mobile) {
+      window.alert("請先填寫姓名與行動電話，這樣之後才能搜尋並辨識這位顧客。");
+      return;
+    }
+
+    const result = upsertCustomer(loadCustomers(), storedData, currentCustomerId);
+    saveCustomers(result.customers);
+    setCurrentCustomerId(result.customer.id);
+    window.localStorage.setItem(SELECTED_CUSTOMER_KEY, result.customer.id);
+    window.alert("已儲存到此瀏覽器的顧客紀錄。");
   }
 
   function clearForm() {
     if (!window.confirm("確定要清空目前表單嗎？")) return;
-    window.localStorage.removeItem(STORAGE_KEY);
     setFields(initialFields);
     setChecks(initialChecks);
     setPurchases([emptyPurchase()]);
+    setCurrentCustomerId(null);
+    window.localStorage.removeItem(SELECTED_CUSTOMER_KEY);
+    window.history.replaceState(null, "", "/");
   }
 
   const textInput = (name: string, className = "input", extraProps: Record<string, string> = {}) => (
@@ -246,6 +249,9 @@ export default function CustomerCardPage() {
   return (
     <>
       <div className="topbar">
+        <button type="button" onClick={() => (window.location.href = "/customers")}>
+          已填寫顧客
+        </button>
         <button type="button" onClick={() => window.print()}>
           列印
         </button>
@@ -290,7 +296,7 @@ export default function CustomerCardPage() {
               <tr>
                 <th>生日</th>
                 <td>
-                  <div className="inline compact">
+                  <div className="date-fields">
                     {textInput("birthYear", "line-input", { inputMode: "numeric", "aria-label": "出生年" })}
                     <span>年</span>
                     {textInput("birthMonth", "line-input", { inputMode: "numeric", "aria-label": "出生月" })}
@@ -312,7 +318,7 @@ export default function CustomerCardPage() {
                 </td>
                 <th>行動</th>
                 <td colSpan={3}>
-                  <div className="inline compact">
+                  <div className="contact-fields">
                     {textInput("mobile", "input", { inputMode: "tel", "aria-label": "行動電話" })}
                     <span>方便連絡時間：</span>
                     {textInput("contactStart", "line-input", { "aria-label": "方便連絡起始時間" })}
