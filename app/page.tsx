@@ -122,6 +122,7 @@ export default function CustomerCardPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([emptyPurchase()]);
   const [currentCustomerId, setCurrentCustomerId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     try {
@@ -198,18 +199,45 @@ export default function CustomerCardPage() {
     setPurchases((current) => current.filter((_, purchaseIndex) => purchaseIndex !== index));
   }
 
-  function saveForm() {
+  async function saveForm() {
     const identity = customerIdentity(fields);
     if (!identity.name || !identity.mobile) {
       window.alert("請先填寫姓名與行動電話，這樣之後才能搜尋並辨識這位顧客。");
       return;
     }
 
-    const result = upsertCustomer(loadCustomers(), storedData, currentCustomerId);
-    saveCustomers(result.customers);
-    setCurrentCustomerId(result.customer.id);
-    window.localStorage.setItem(SELECTED_CUSTOMER_KEY, result.customer.id);
-    window.alert("已儲存到此瀏覽器的顧客紀錄。");
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("/api/customers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...storedData,
+          currentCustomerId
+        })
+      });
+      const payload = (await response.json()) as {
+        customer?: { id: string };
+        error?: string;
+      };
+
+      if (!response.ok || !payload.customer) {
+        throw new Error(payload.error ?? "顧客資料寫入資料庫失敗。");
+      }
+
+      const result = upsertCustomer(loadCustomers(), storedData, payload.customer.id);
+      saveCustomers(result.customers);
+      setCurrentCustomerId(result.customer.id);
+      window.localStorage.setItem(SELECTED_CUSTOMER_KEY, result.customer.id);
+      window.alert("顧客資料已儲存到資料庫，並保留在此瀏覽器作為本機備份。");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "顧客資料寫入資料庫失敗。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function clearForm() {
@@ -255,8 +283,8 @@ export default function CustomerCardPage() {
         <button type="button" onClick={() => window.print()}>
           列印
         </button>
-        <button type="button" className="secondary" onClick={saveForm} disabled={!isReady}>
-          儲存到此瀏覽器
+        <button type="button" className="secondary" onClick={saveForm} disabled={!isReady || isSaving}>
+          {isSaving ? "儲存中..." : "儲存到資料庫"}
         </button>
         <button type="button" className="secondary" onClick={clearForm}>
           清空表單
